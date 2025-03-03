@@ -64,15 +64,34 @@ model_predict <- function(i){
   load(file.path(root, "Results", "LandcoverModels", "Models", species.i, paste0("NorthModel_", species.i, "_", boot.i, ".Rdata")))
   
   #3. Get the data----
+  bird.i <- bird_test[, species.i]
   off.i <- off_test[, species.i]
   dat.i <- cbind(covs_test, off.i)
+  colnames(dat.i) <- c(colnames(covs_test), "offset")
   
   #4. Make the climate predictions----
-  clim.i <- inv.link(predict(averagemodel, type="link", full=TRUE, newdata = covs_test))
-
+  dat.i$climate <- inv.link(predict(averagemodel, type="link", full=TRUE, newdata = dat.i))
   
-
+  #5. Make the landcover predictions----
+  dat.i$landcover <- predict(bestmodel, type="response", newdata = dat.i)
   
+  #6. Truncate & package----
+  q99 <- quantile(dat.i$landcover, 0.99)
+  
+  out.i <- dat.i |> 
+    mutate(prediction = ifelse(landcover > q99, q99, landcover)) |> 
+    dplyr::select(climate, landcover, prediction) |> 
+    mutate(count = bird.i,
+           residual = count - prediction)
+  
+  #7. Save----
+  #Make a species folder in predictions
+  if(!(file.exists(file.path(root, "Results", "Predictions", species.i)))){
+    dir.create(file.path(root, "Results", "Predictions", species.i))
+  }
+  
+  write.csv(out.i, file = file.path(root, "Results", "Predictions", species.i, paste0("Predictions_", species.i, "_", boot.i, ".csv")),  row.names = FALSE)
+
 }
 
 #RUN MODELS###############
@@ -87,8 +106,8 @@ todo <- data.frame(file = list.files(file.path(root, "Results", "LandCoverModels
 
 #2. Get list of completed predictions ----
 done <- data.frame(file = list.files(file.path(root, "Results", "Predictions"), pattern="*.csv", recursive=TRUE)) |>
-  separate(file, into=c("spf", "species", "bootstrap", "filetype")) |>
-  dplyr::select(-filetype, -spf)
+  separate(file, into=c("prediction", "spf", "species", "bootstrap", "filetype")) |>
+  dplyr::select(-filetype, -spf, -prediction)
 
 #3. Make todo list----
 loop <- anti_join(todo, done)
@@ -102,7 +121,7 @@ if(nrow(loop) > 0){
   tmpcl <- clusterExport(cl, c("loop"))
   
   #4. Run prediction function in parallel----
-  print("* Fitting models *")
+  print("* Making predictions *")
   mods <- parLapply(cl,
                     X=1:nrow(loop),
                     fun=model_predict)
@@ -110,21 +129,10 @@ if(nrow(loop) > 0){
 }
 
 
+#CONCLUDE####
 
+#1. Close clusters----
+print("* Shutting down clusters *")
+stopCluster(cl)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+if(cc){ q() }
