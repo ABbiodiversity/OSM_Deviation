@@ -80,9 +80,11 @@ model_predict <- function(i){
   
   out.i <- dat.i |> 
     mutate(prediction = ifelse(landcover > q99, q99, landcover)) |> 
-    dplyr::select(climate, landcover, prediction) |> 
+    dplyr::select(surveyid, climate, landcover, prediction) |> 
     mutate(count = bird.i,
-           residual = count - prediction)
+           residual = count - prediction,
+           species = species.i,
+           boot = boot.i)
   
   #7. Save----
   #Make a species folder in predictions
