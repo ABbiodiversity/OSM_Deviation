@@ -27,7 +27,7 @@ wt_auth()
 # 2. Download ----
 
 ## 2.1 List of projects ----
-projects <- c(2088, 1174, 1281)
+projects <- c(2088, 1174, 1281, 1240, 2132)
 
 ## 2.2 Download them -----
 dat.list <- list()
@@ -44,10 +44,19 @@ dat <- do.call(rbind, dat.list)
 # 3. Tidy ----
 
 # 3.1 Replace tmtt, make wide ----
+# quick and dirty filter of lat lon to get to the AOI
+# filter to 2020 and on
 dat_wide <- dat |> 
   wt_tidy_species(remove=c("mammal", "amphibian", "abiotic", "insect", "human", "unknown")) |> 
   wt_replace_tmtt() |> 
-  wt_make_wide()
+  mutate(species_code = ifelse(species_code=="GRAJ", "CAJA", species_code)) |>
+  wt_make_wide() |>
+  mutate(recording_date_time = ymd_hms(recording_date_time),
+         year = year(recording_date_time)) |> 
+  dplyr::filter(!is.na(latitude), !is.na(year),
+                latitude > 52.9,
+                longitude > -119.4,
+                year >= 2020)
 
 # 4. QPAD ----
   
@@ -71,5 +80,17 @@ colnames(offset_df) <- spp_mean
 dat_off <- cbind(dat_qpad, offset_df)
 dat_off <- dat_off[, order(colnames(dat_off))]
 
-# 5. Save ----
+# 5. Save locations for gis ----
+
+## 5.1 Get the locations ----
+dat_locs <- dat_wide |> 
+  dplyr::select(organization, project_id, location_id, latitude, longitude, year) |> 
+  unique() |> 
+  mutate(gisid = paste0(location_id, "_", year),
+         buffer = 0,
+         topsecret = 0)
+
+write.csv(dat_locs, file.path(root, "Data", "NewWTLocationsForGIS.csv"), row.names = FALSE)
+
+# 6. Save ----
 save(dat_wide, dat_off, file = file.path(root, "Data", "NewWTData.Rdata"))
