@@ -1,5 +1,5 @@
 # ---
-# title: "01.NewData"
+# title: "02.GetAdditionalTestData"
 # author: "Elly Knight"
 # created: "2025-03-03"
 # inputs: project_ids of interest to add to dataset
@@ -84,7 +84,7 @@ dat_off <- dat_off[, order(colnames(dat_off))]
 
 ## 5.1 Get the locations ----
 dat_locs <- dat_wide |> 
-  dplyr::select(organization, project_id, location_id, latitude, longitude, year) |> 
+  dplyr::select(location_id, latitude, longitude, year) |> 
   unique() |> 
   mutate(gisid = paste0(location_id, "_", year),
          buffer = 0,

@@ -149,7 +149,7 @@ model_climate <- function(i){
 #RUN MODELS###############
 
 #1. Set species list----
-spp <- c("OVEN")
+spp <- sort(c("CONI", "LEFL", "CMWA", "HETH", "OVEN", "PIWO", "BTNW", "NOWA", "CAJA", "RUGR", "YBSA", "DEJU", "BHCO", "CAWA", "OSFL"))
 
 #2. Set bootstrap list----
 b <- c(1:10)
@@ -163,7 +163,7 @@ done <- data.frame(file = list.files(file.path(root, "Results", "ClimateModels",
   separate(file, into=c("f1", "f2", "species", "bootstrap", "f3")) |> 
   dplyr::select(species, bootstrap) |>
   mutate(bootstrap = as.numeric(bootstrap)) |>
-  inner_join(data.frame(file = list.files(file.path(root, "Results", "ClimateModels", "Coefficients"), pattern="*.csv", recursive=TRUE)) |>
+  inner_join(data.frame(file = list.files(file.path(root, "Results", "ClimateModels", "Models"), pattern="*.Rdata", recursive=TRUE)) |>
                separate(file, into=c("f4", "f5", "species", "bootstrap", "f6")) |>
                dplyr::select(species, bootstrap) |>
                mutate(bootstrap = as.numeric(bootstrap)))

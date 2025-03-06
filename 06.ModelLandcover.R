@@ -177,7 +177,7 @@ if(nrow(loop) > 0){
   print("* Fitting models *")
   mods <- parLapply(cl,
                     X=1:nrow(loop),
-                    fun=model_predict)
+                    fun=model_landcover)
   
 }
 

@@ -49,7 +49,7 @@ link <- poisson()$linkfun
 #9. Load data objects----
 print("* Loading data on workers *")
 
-tmpcl <- clusterExport(cl, c("bird_test", "off_test", "covs_test", "inv.link", "link"))
+tmpcl <- clusterExport(cl, c("bird_test", "off_test", "corr_test", "covs_test", "inv.link", "link"))
 
 #WRITE FUNCTION##########
 
@@ -66,8 +66,9 @@ model_predict <- function(i){
   #3. Get the data----
   bird.i <- bird_test[, species.i]
   off.i <- off_test[, species.i]
-  dat.i <- cbind(covs_test, off.i)
-  colnames(dat.i) <- c(colnames(covs_test), "offset")
+  corr.i <- corr_test[, species.i]
+  dat.i <- cbind(covs_test, off.i, corr.i)
+  colnames(dat.i) <- c(colnames(covs_test), "offset", "correction")
   
   #4. Make the climate predictions----
   dat.i$climate <- inv.link(predict(averagemodel, type="link", full=TRUE, newdata = dat.i))
@@ -80,9 +81,10 @@ model_predict <- function(i){
   
   out.i <- dat.i |> 
     mutate(prediction = ifelse(landcover > q99, q99, landcover)) |> 
-    dplyr::select(surveyid, climate, landcover, prediction) |> 
+    dplyr::select(surveyid, climate, landcover, prediction, correction) |> 
     mutate(count = bird.i,
-           residual = count - prediction,
+           density = bird.i/correction,
+           residual = density - prediction,
            species = species.i,
            boot = boot.i)
   
