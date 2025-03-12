@@ -152,7 +152,7 @@ model_climate <- function(i){
 spp <- sort(c("CONI", "LEFL", "CMWA", "HETH", "OVEN", "PIWO", "BTNW", "NOWA", "CAJA", "RUGR", "YBSA", "DEJU", "BHCO", "CAWA", "OSFL"))
 
 #2. Set bootstrap list----
-b <- c(1:10)
+b <- c(1:25)
 
 #3. Make todo list----
 todo <- expand.grid(species = spp, bootstrap = b) |>
