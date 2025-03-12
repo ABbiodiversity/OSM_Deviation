@@ -79,7 +79,8 @@ model_interpretation <- function(i){
     
     #make predictions----
     pred[[j]] <- data.frame(pred = dismo::predict(m.i, dat.j)) |> 
-      cbind(dat.j)
+      cbind(dat.j) |> 
+      mutate(var = var.j)
     
   }
   
@@ -111,8 +112,7 @@ done <- data.frame(file = list.files(file.path(root, "Results", "Interpretation"
   dplyr::select(-filetype, -spf, -interpretation)
 
 #4. Make todo list----
-loop <- anti_join(todo, done) |> 
-  dplyr::filter(species=="OVEN")
+loop <- anti_join(todo, done)
 
 if(nrow(loop) > 0){
   
