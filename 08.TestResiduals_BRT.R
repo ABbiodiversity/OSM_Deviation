@@ -88,6 +88,7 @@ model_deviation <- function(i){
                              tree.complexity = 3,
                              learning.rate = lr.i,
                              family = "gaussian"))
+  if(inherits(m.i, "try-error")){ return(NULL)}
 
   #5. Save model ----
   #Make a species folder in predictions
@@ -136,8 +137,7 @@ done <- data.frame(file = list.files(file.path(root, "Results", "BRTs"), pattern
 
 #4. Make todo list----
 loop <- anti_join(todo, done) |> 
-  left_join(lr) |> 
-  dplyr::filter(bootstrap==1)
+  left_join(lr)
 
 if(nrow(loop) > 0){
   
