@@ -32,8 +32,8 @@ load(file.path(rootout, "Deviation From Expected", "Data", "NewWrangledData.Rdat
 lu <- read_sf(file.path(rootout, "GIS", "OSR_LU_fxd", "OSR_LUs_fxd.shp"))
 
 ## 1.6 Import BADR treatment ----
-badr <- read_sf(file.path(rootout, "GIS", "year_2021_treat.shp")) |>
-  st_make_valid()
+# badr <- read_sf(file.path(rootout, "GIS", "year_2021_treat.shp")) |>
+#   st_make_valid()
 
 #2. Data combination ----
 
