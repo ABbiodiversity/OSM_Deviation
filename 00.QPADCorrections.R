@@ -119,7 +119,7 @@
                              as.POSIXct(dtm, tz="GMT"),
                              direction="sunrise", POSIXct.out=FALSE) * 24
   }
-  TSSR <- round(unname((hour - sr + ltz) / 24), 4)
+  TSSR <- round(unname((hour - sr - ltz) / 24), 4)
   
   #days since local spring
   DSLS <- (day - d1) / 365
