@@ -52,7 +52,7 @@ covs_use <- covs_badr |>
          badr_lowwells = `Low Activity Well Pads`,
          badr_minebuffer = `Plant/Mine Buffer`,
          badr_reference = `Low Disturbance/Reference`) |> 
-  dplyr::select(surveyid, year, cei, propmine, proproad, propseismi, propallwel, propinsitu, propcrop, badr_highwells, badr_roads, badr_mine, badr_linear, badr_lowwells, badr_minebuffer, badr_reference)
+  dplyr::select(surveyid, year, cei, propmine, proproad, propseismi, propallwel, proppipe, badr_highwells, badr_roads, badr_mine, badr_linear, badr_lowwells, badr_minebuffer)
 
 #9. Load data objects----
 print("* Loading data on workers *")
@@ -85,7 +85,7 @@ model_deviation <- function(i){
   m.i <- try(dismo::gbm.step(data=dat.i,
                              gbm.x=c(2:ncol(dat.i)),
                              gbm.y=1,
-                             tree.complexity = 3,
+                             tree.complexity = 2,
                              learning.rate = lr.i,
                              family = "gaussian"))
   if(inherits(m.i, "try-error")){ return(NULL)}
