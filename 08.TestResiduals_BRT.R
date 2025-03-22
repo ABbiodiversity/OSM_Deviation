@@ -111,10 +111,14 @@ model_deviation <- function(i){
                      correlation.se = m.i$cv.statistics$correlation.se,
                      time = (proc.time()-t0)[3]))
   
+  #Make a species folder in predictions
+  if(!(file.exists(file.path(root, "Results", "BRTs", "ModelPerformance")))){
+    dir.create(file.path(root, "Results", "BRTs", "ModelPerformance"))
+  }
+  
   write.csv(out.i, file=file.path(root, "Results", "BRTs", "ModelPerformance", paste0(species.i, "_", boot.i, ".csv")), row.names = FALSE)
   
 }
-
 
 #RUN MODELS###############
 
