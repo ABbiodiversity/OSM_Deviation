@@ -129,7 +129,7 @@ covs_latlon <- covs_test |>
   cbind(covs_test) |> 
   rename(longitude = X, latitude = Y)
 
-## 5.4 Get correctios ----
+## 5.4 Get corrections ----
 corr_test <- qpad_correction(covs_latlon,
                              species = c("LEFL", "CMWA", "HETH", "OVEN", "PIWO", "BTNW", "NOWA", "GRAJ", "RUGR", "YBSA", "DEJU", "BHCO", "CAWA", "OSFL")) |> 
   rename(CAJA = GRAJ) |> 
