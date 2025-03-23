@@ -97,29 +97,46 @@ coef.sum <- coef.long |>
   summarize(mn = mean(val),
             se = sd(val)/5)
 
-## 3.4 Tidy for plotting ----
+## 3.4 Get predictions ----
+pred <- read.csv(file.path(root, "Deviation From Expected", "Results", "Predictions.csv"))
+
+## 3.5 Summarize ----
+pred.sum <- pred |> 
+  group_by(species, boot) |> 
+  summarize(pred = mean(prediction)) |> 
+  group_by(species) |> 
+  summarize(mn = mean(pred),
+            se = sd(pred)/5) |> 
+  ungroup() |> 
+  mutate(var = "Other") |> 
+  dplyr::filter(species!="CONI") |> 
+  mutate(species = factor(species, levels=c("LEFL", "BTNW", "CMWA", "HETH", "OVEN", "PIWO", "NOWA", "CAJA", "DEJU", "RUGR", "YBSA", "BHCO", "CAWA", "OSFL")))
+
+## 3.4 Tidy & put together for plotting ----
 coef.tidy <- coef.sum |> 
-  dplyr::filter(var %in% c("Wellsites", "EnSeismic", "EnSoftLin", "Industrial", "MineV")) |> 
+  dplyr::filter(var %in% c("Wellsites", "EnSeismic", "EnSoftLin", "Industrial", "MineV", "Other"))  |> 
   left_join(spp) |> 
   mutate(species = factor(species, levels=c("LEFL", "BTNW", "CMWA", "HETH", "OVEN", "PIWO", "NOWA", "CAJA", "DEJU", "RUGR", "YBSA", "BHCO", "CAWA", "OSFL")),
-         var = factor(var, levels=c("EnSeismic", "EnSoftLin", "Wellsites", "Industrial", "MineV"),
-                      labels = c("Seismic lines", "Roads", "Well pads", "Industrial", "Mine buffer")))
+         var = factor(var, levels=c("Other", "EnSeismic", "EnSoftLin", "Wellsites", "Industrial", "MineV"),
+                      labels = c("Other", "Seismic lines", "Roads", "Well pads", "Industrial", "Mine buffer")))
 
 ## 3.3 Plot ----
 plot.coef <- ggplot(coef.tidy) + 
+  geom_rect(data=pred.sum, aes(xmin = -Inf, xmax = Inf, ymin=mn-1.96*se, ymax=mn+1.96*se), alpha = 0.2, fill="grey70") +
+  geom_hline(data=pred.sum, aes(yintercept = mn), linetype="dashed", colour="grey70") +
   geom_errorbar(aes(x=var, ymin = mn-1.96*se, ymax = mn+1.96*se), colour="grey30") +
-  geom_point(aes(x=var, y=mn, fill=species), pch=21, alpha=0.7, size=2, colour="grey30") +
+  geom_point(aes(x=var, y=mn, fill=guild), pch=21, alpha=0.7, size=2, colour="grey30") +
   theme_classic() +
   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
         legend.position ="bottom",
         legend.title = element_blank()) +
-  facet_wrap(~guild, ncol=3, scales="free_y") +
+  facet_wrap(~species, ncol=3, scales="free_y") +
   xlab("Oil and gas footprint type") +
-  ylab("Relative abundance") +
+  ylab("Density (birds/ha)") +
   guides(fill=guide_legend(nrow=2))
 plot.coef
 
-ggsave(plot.coef, file=file.path(root, "Deviation From Expected", "Figures", "Suitability.jpeg"), width =10, height = 7)
+ggsave(plot.coef, file=file.path(root, "Deviation From Expected", "Figures", "Suitability.jpeg"), width =10, height = 12)
   
 # 4. Deviation from expected ----
 
@@ -156,3 +173,56 @@ plot.dev <- ggplot(pred.sum) +
 plot.dev
 
 ggsave(plot.dev, file=file.path(root, "Deviation From Expected", "Figures", "Deviation.jpeg"), width =8, height = 6)
+
+
+
+# X. Individual suitability plots ----
+
+## X.1 Get data ----
+coef <- read.csv(file.path(root, "Deviation From Expected", "Results", "Coefficients.csv"))
+
+## X.2 Wrangle ----
+coef.long <- coef |> 
+  dplyr::select(-Climate) |> 
+  rowwise() |> 
+  mutate(TreedFen = mean(TreedFenR, TreedFen1, TreedFen2, TreedFen3, TreedFen4, TreedFen5, TreedFen6, TreedFen7, TreedFen8)) |> 
+  ungroup() |> 
+  pivot_longer(c(WhiteSpruceR:MineV, TreedFen), names_to="var", values_to="val") |> 
+  mutate(val = exp(val)) |> 
+  dplyr::filter(species!="CONI")
+
+## X.3 Summarize ----
+coef.sum <- coef.long |> 
+  group_by(species, var) |> 
+  summarize(mn = mean(val),
+            se = sd(val)/5) |> 
+  left_join(spp) |> 
+  dplyr::filter(str_sub(var, 1, 2)!="CC",
+                !var %in% c("HardLin", "Water", "Bare", "SnowIce", "Mine", "Bare"),
+                !var %in% c("TreedFenR", "TreedFen1",  "TreedFen2", "TreedFen3", "TreedFen4", "TreedFen5", "TreedFen6", "TreedFen7",  "TreedFen8")) |> 
+  mutate(var = factor(var, levels=c("WhiteSpruceR", "WhiteSpruce1", "WhiteSpruce2", "WhiteSpruce3", "WhiteSpruce4", "WhiteSpruce5", "WhiteSpruce6", "WhiteSpruce7", "WhiteSpruce8", "PineR", "Pine1", "Pine2", "Pine3", "Pine4", "Pine5", "Pine6", "Pine7", "Pine8", "DeciduousR", "Deciduous1", "Deciduous2", "Deciduous3", "Deciduous4", "Deciduous5", "Deciduous6", "Deciduous7", "Deciduous8",  "MixedwoodR", "Mixedwood1", "Mixedwood2", "Mixedwood3", "Mixedwood4", "Mixedwood5", "Mixedwood6", "Mixedwood7", "Mixedwood8", "BlackSpruceR", "BlackSpruce1", "BlackSpruce2", "BlackSpruce3", "BlackSpruce4", "BlackSpruce5", "BlackSpruce6", "BlackSpruce7", "BlackSpruce8", "TreedFen", "TreedSwamp", "ShrubbySwamp", "ShrubbyBog",  "ShrubbyFen", "GraminoidFen", "Marsh", "Shrub", "GrassHerb",  "Crop", "TameP", "RoughP", "Wellsites", "Rural", "Urban", "Industrial", "MineV", "EnSoftLin", "TrSoftLin", "EnSeismic")))
+
+## X.4 Loop through species ----
+for(i in 1:nrow(spp)){
+  
+  ## X.5 Filter data ----
+  coef.i <- dplyr::filter(coef.sum, species==spp$species[i])
+  
+  ## X.6 Plot ----
+  plot.i <- ggplot(coef.i) + 
+    geom_errorbar(aes(x=var, ymin = mn-1.96*se, ymax = mn+1.96*se), colour="grey30") +
+    geom_point(aes(x=var, y=mn),alpha=0.7, size=2, colour="grey30") +
+    theme_classic() +
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+          legend.position ="bottom",
+          legend.title = element_blank()) +
+    xlab("") +
+    ylab("Density (birds/ha)") +
+    ggtitle(spp$species[i])
+
+  ## X.7 Save ----
+  ggsave(file.path(root, "Deviation From Expected", "Figures", "Suitability_species", paste0(spp$species[i], ".jpg")), width = 10, height = 6)
+  
+  cat(spp$species[i], "  ")
+  
+}
