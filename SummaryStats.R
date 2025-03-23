@@ -17,6 +17,9 @@ library(sf)
 ## 1.2 Set GD roots----
 root <- "G:/Shared drives/ABMI_ECKnight/Projects/OSM/Deviation From Expected"
 
+## 1.3 Scientific notation ----
+options(scipen=999999)
+
 # 2. Data summary ----
 
 ## 2.1 Get the data -----
@@ -108,63 +111,8 @@ bird_test |>
 
 # 3. Habitat models -----
 
-## 3.1 Get list of landcover models----
-todo <- data.frame(file = list.files(file.path(root, "Results", "LandCoverModels", "Models"), pattern="*.Rdata", recursive = TRUE)) |>
-  separate(file, into=c("f1", "f2", "species", "bootstrap", "f3")) |> 
-  dplyr::select(species, bootstrap) |>
-  inner_join(data.frame(file = list.files(file.path(root, "Results", "LandCoverModels", "Coefficients"), pattern="*.csv", recursive = TRUE)) |>
-               separate(file, into=c("f4", "f5", "species", "bootstrap", "f6")) |>
-               dplyr::select(species, bootstrap))
-
-## 3.2 Set up loop ----
-terms.list <- list()
-coefs.list <- list()
-for(i in 1:nrow(todo)){
-  
-  boot.i <- todo$bootstrap[i]
-  species.i <- as.character(todo$species[i])
-  
-  ## 3.3 Load model ----
-  load(file.path(root, "Results", "LandcoverModels", "Models", species.i, paste0("NorthModel_", species.i, "_", boot.i, ".Rdata")))
-  
-  ## 3.4 Get terms ----
-  terms.list[[i]] <- data.frame(terms = as.character(attr(bestmodel[["terms"]], "variables")),
-                        bootstrap = boot.i,
-                        species = species.i) |> 
-    dplyr::filter(!terms %in% c("list", "count", "offset(offset)"))
-  
-  ## 3.5 Get coeffs ----
-  coefs.list[[i]] <- data.frame(bestmodel$coefficients) |> 
-    mutate(bootstrap = boot.i,
-           species = species.i) |> 
-    rownames_to_column() |> 
-    rename(var = rowname, coef = bestmodel.coefficients) |> 
-    dplyr::filter(var!="(Intercept)")
-  
-  cat(i, "  ")
-    
-}
-
-## 3.6 Tidy results ----
-terms <- do.call(rbind, terms.list)
-coefs <- do.call(rbind, coefs.list)
-
-## 3.7 Summarize -----
-coefs.sum <- coefs |> 
-  group_by(species, var) |> 
-  summarize(mn = mean(coef),
-            se = sd(coef)/5) |> 
-  ungroup()
-
-## 3.8 Plot it -----
-ggplot(coefs.sum |> dplyr::filter(var!="climate", species!="CONI")) + 
-  geom_errorbar(aes(x=var, ymin = mn-1.96*se, ymax = mn+1.96*se, group=species)) +
-  geom_point(aes(x=var, y=mn, colour=species)) +
-  theme_classic() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
-
-#TO DO: DECIDE WHETHER TO PACKAGE THESE... PROBABLY SHOULD
-
+## 3.1 Get coefs & predictions ----
+coef <- read.csv(file.path(root, "Results", "Coefficients.csv"))
 
 # 4. Deviation -----
 
@@ -195,9 +143,98 @@ pred.sum <- pred |>
   mutate(lwr = mn - 1.96*se,
          upr = mn + 1.96*se)
 
+## 4.6 Deviation ----
 pred.sum |> 
   dplyr::filter(mn < 0) |> 
   summary()
 
 pred.sum |> 
   mutate(lwr = mn - q.96*se)
+
+# 5. Deviation explained ----
+
+## 5.1 Get list of model performance files ----
+perf.files <- data.frame(path = list.files(file.path(root, "Results", "BRTs", "ModelPerformance"), pattern="*.csv", full.names = TRUE))
+
+## 5.2 Read them in ----
+perf <- map_dfr(read.csv, .x=perf.files$path)
+
+## 5.3 Calculate deviance explained ----
+perf.sum <- perf |> 
+  mutate(dev = (deviance.mean - resid)/deviance.mean) |> 
+  group_by(species) |> 
+  summarize(dev.mn = mean(dev),
+            dev.se = sd(dev)/(sqrt(25))) |> 
+  ungroup() |> 
+  dplyr::filter(species!="CONI")
+mean(perf.sum$dev.mn)
+sd(perf.sum$dev.mn)
+
+# 6. Landscape scale effects ----
+
+## 6.1 Get the variables importance ----
+var <- read.csv(file.path(root, "Results", "BRTVariableImportance.csv"))
+
+## 6.2 Classify vars ----
+names <- data.frame(var = c("badr_highwells", "badr_linear", "badr_lowwells", "badr_mine", "badr_minebuffer", "badr_roads", "cei", "propallwel","proppipe", "propmine", "proproad", "propseismi", "year"),
+                    scale = c(rep("JEM", 6), rep("LU", 6), "time"),
+                    name = c("High impact wellsites", "Linear features", "Low impact wellsites", "Mine/plant", "Mine/plant buffer", "Roads",
+                             "Cumulative footprint index", "Wellsites",  "Pipelines", "Mine/plant", "Road", "Seismic lines",
+                             "Year"))
+
+## 6.3 Wrangle to % deviance ----
+var.perf <- var |> 
+  rename(bootstrap = boot) |> 
+  left_join(perf |> 
+              mutate(dev = (deviance.mean - resid)/deviance.mean) |> 
+              dplyr::select(species, bootstrap, dev),
+            multiple="all") |> 
+  dplyr::select(-X) |> 
+  mutate(var.dev = dev*rel.inf/100) |> 
+  group_by(species, var) |> 
+  summarize(dev.mn = mean(var.dev),
+            dev.se = sd(var.dev)/5) |> 
+  ungroup() |> 
+  left_join(names)
+
+## 6.4 Just landscape scale ----
+var.lu <- var.perf |> 
+  dplyr::filter(scale=="LU")
+
+summary(var.lu)
+
+## 6.5 Let's try looking at one ----
+pred <- read.csv(file.path(root, "Results", "Predictions.csv"))
+load(file.path(root, "Data", "Test.Rdata"))
+covs_use <- covs_badr |> 
+  rename(badr_highwells = `High Activity Insitu Well Pads`,
+         badr_roads = Roads,
+         badr_mine = `Plant/Mine`,
+         badr_linear = `Dense Linear Features`,
+         badr_lowwells = `Low Activity Well Pads`,
+         badr_minebuffer = `Plant/Mine Buffer`,
+         badr_reference = `Low Disturbance/Reference`) |> 
+  dplyr::select(surveyid, year, cei, propmine, proproad, propseismi, propallwel, proppipe, badr_highwells, badr_roads, badr_mine, badr_linear, badr_lowwells, badr_minebuffer)
+
+pred.eg <- pred |> 
+  dplyr::filter(species=="OVEN") |> 
+  left_join(covs_use) |> 
+  mutate(cei_c = case_when(cei < 0.4 ~ "low",
+                           cei > 0.8 ~ "high"),
+         badr_linear_c = case_when(badr_linear < 0.1 ~ "low",
+                                   badr_linear < 0.8 ~ "high"),
+         badr_lowwells_c = case_when(badr_lowwells < 0.1 ~ "low",
+                                     badr_lowwells > 0.9 ~ "high"),
+         propmine_c = case_when(propmine > 0.02 ~ "high",
+                                propmine < 0.02 ~ "low"))
+
+ggplot(pred.eg) +
+  geom_point(aes(x=propmine, y=residual)) +
+  geom_smooth(aes(x=propmine, y=residual), method="lm")
+
+ggplot(pred.eg) +
+  geom_boxplot(aes(x=badr_lowwells_c, y=residual))
+
+t.test(residual ~ badr_linear_c, data=pred.eg)
+
+hist(pred.eg$residual)
