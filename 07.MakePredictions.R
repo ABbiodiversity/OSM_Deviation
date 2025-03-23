@@ -83,7 +83,7 @@ model_predict <- function(i){
     mutate(prediction = ifelse(landcover > q99, q99, landcover)) |> 
     dplyr::select(surveyid, climate, landcover, prediction, correction) |> 
     mutate(count = bird.i,
-           density = bird.i/correction,
+           density = bird.i+0.0000001/correction,
            residual = density - prediction,
            species = species.i,
            boot = boot.i)
