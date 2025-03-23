@@ -168,13 +168,10 @@ plot.dev <- ggplot(pred.sum) +
         axis.title.x = element_blank(),
         legend.position = "bottom",
         legend.title = element_blank()) +
-  ylab("Percent difference in density between predicted and observed") +
-  ylim(c(-100, 100))
+  ylab("Percent difference in density between predicted and observed")
 plot.dev
 
 ggsave(plot.dev, file=file.path(root, "Deviation From Expected", "Figures", "Deviation.jpeg"), width =8, height = 6)
-
-
 
 # X. Individual suitability plots ----
 

@@ -225,16 +225,20 @@ pred.eg <- pred |>
                                    badr_linear < 0.8 ~ "high"),
          badr_lowwells_c = case_when(badr_lowwells < 0.1 ~ "low",
                                      badr_lowwells > 0.9 ~ "high"),
+         badr_roads_c = case_when(badr_roads < 0.2 ~ "low",
+                                  badr_roads > 0.8 ~ "high"),
          propmine_c = case_when(propmine > 0.02 ~ "high",
-                                propmine < 0.02 ~ "low"))
+                                propmine < 0.02 ~ "low"),
+         proproad_c = case_when(proproad < 0.001 ~ "low",
+                                proproad > 0.010 ~ "high"))
 
 ggplot(pred.eg) +
-  geom_point(aes(x=propmine, y=residual)) +
-  geom_smooth(aes(x=propmine, y=residual), method="lm")
+  geom_point(aes(x=badr_roads, y=residual)) +
+  geom_smooth(aes(x=badr_roads, y=residual), method="lm")
 
 ggplot(pred.eg) +
-  geom_boxplot(aes(x=badr_lowwells_c, y=residual))
+  geom_boxplot(aes(x=badr_roads_c, y=residual))
 
-t.test(residual ~ badr_linear_c, data=pred.eg)
+t.test(residual ~ badr_roads_c, data=pred.eg)
 
 hist(pred.eg$residual)
