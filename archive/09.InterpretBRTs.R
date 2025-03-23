@@ -112,7 +112,8 @@ done <- data.frame(file = list.files(file.path(root, "Results", "Interpretation"
   dplyr::select(-filetype, -spf, -interpretation)
 
 #4. Make todo list----
-loop <- anti_join(todo, done)
+loop <- anti_join(todo, done) |> 
+  dplyr::filter()
 
 if(nrow(loop) > 0){
   

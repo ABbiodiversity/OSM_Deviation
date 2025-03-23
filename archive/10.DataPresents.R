@@ -30,7 +30,8 @@ names <- data.frame(var = c("badr_highwells", "badr_linear", "badr_lowwells", "b
 interp <- data.frame(path = list.files(file.path(root, "Results", "Interpretation"), pattern="*.Rdata", recursive=TRUE, full.names = TRUE),
                      file = list.files(file.path(root, "Results", "Interpretation"), pattern="*.Rdata", recursive = TRUE)) |>
   separate(file, into=c("interpretation", "spf", "species", "bootstrap", "filetype")) |>
-  dplyr::select(-filetype, -spf, -interpretation)
+  dplyr::select(-filetype, -spf, -interpretation) |> 
+  dplyr::filter(species=="OVEN")
 
 ## 2.2 Set up loop ----
 int.list <- list()
@@ -60,9 +61,9 @@ int <- do.call(rbind, int.list)
 pred <- do.call(rbind, pred.list)
 
 ## 2.6 Save for later ----
-write.csv(var, file.path(root, "Results", "BRTVariableImportance.csv"))
-write.csv(int, file.path(root, "Results", "BRTInteractions.csv"))
-write.csv(pred, file.path(root, "Results", "BRTPredictions.csv"))
+# write.csv(var, file.path(root, "Results", "BRTVariableImportance.csv"))
+# write.csv(int, file.path(root, "Results", "BRTInteractions.csv"))
+# write.csv(pred, file.path(root, "Results", "BRTPredictions.csv"))
 
 # 3. Variable importance ----
 
@@ -126,7 +127,7 @@ summary(var.use$inf.mn)
 
 ## 5.2 Make the predictions long ----
 pred.long <- pred |> 
-  pivot_longer(year:badr_roads, names_to="var2", values_to="val") |>  
+  pivot_longer(-c(pred, residual, var, species, boot), names_to="var2", values_to="val") |>  
   dplyr::filter(var==var2)
 
 ## 5.2 Join to the bootstrapped values ----
