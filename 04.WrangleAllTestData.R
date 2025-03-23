@@ -25,7 +25,7 @@ rootout <- "G:/Shared drives/ABMI_ECKnight/Projects/OSM"
 load(file.path(rootin, "Data", "Harmonized.Rdata"))
 load(file.path(rootin, "Data", "Stratified.Rdata"))
 
-## 1.4 Load the additioanl downloaded data ----
+## 1.4 Load the additional downloaded data ----
 load(file.path(rootout, "Deviation From Expected", "Data", "NewWrangledData.Rdata"))
 
 ## 1.5 Import LU shapefile ----
@@ -44,6 +44,7 @@ off_new$surveyid <- off_new$surveyid + max(covs$surveyid)
 
 ## 2.2 Add task duration to bird model data ----
 #we'll need this to get the QPAD corrections
+#keep use for splitting out the within time period test dataset
 covs_dur <- covs |> 
   left_join(use |> 
               dplyr::select(project_id, gisid, date_time, duration),
@@ -53,7 +54,7 @@ covs_dur <- covs |>
 ## 2.2 Wrangle bird model data ----
 covs_mod <- covs_dur |> 
   mutate(year = year + 1992) |> 
-  dplyr::select(all_of(colnames(covs_new)))
+  dplyr::select(all_of(colnames(covs_new)), use)
 
 ## 2.2 Identify duplicates ----
 loc_new <- covs_new |>
@@ -69,7 +70,8 @@ duplicates <- inner_join(loc_new, loc_mod)
 ## 2.3 Put covs together ----
 covs_all <- covs_mod |> 
   anti_join(duplicates) |> 
-  rbind(covs_new)
+  rbind(covs_new |> 
+          mutate(use = "test"))
 
 #3. Data preparation ----
 
@@ -97,13 +99,17 @@ loc_aoi <- loc_sf |>
 covs_aoi <- inner_join(covs_all, loc_aoi |> st_drop_geometry())
 
 ## 4.3 Split out test data based on year ----
+#also take out eBird
 covs_test <- covs_aoi |> 
-  dplyr::filter(year >= 2020)
+  dplyr::filter(year >= 2020 | use=="test",
+                year >= 2010,
+                project_id!=99999) |> 
+  dplyr::select(-use)
 
 ## 4.4 Compile the other objects -----
 
 # Also filter to indicator species
-spp <- sort(c("CONI", "LEFL", "CMWA", "HETH", "OVEN", "PIWO", "BTNW", "NOWA", "CAJA", "RUGR", "YBSA", "DEJU", "BHCO", "CAWA", "OSFL"))
+spp <- sort(c("LEFL", "CMWA", "HETH", "OVEN", "PIWO", "BTNW", "NOWA", "CAJA", "RUGR", "YBSA", "DEJU", "BHCO", "CAWA", "OSFL"))
 
 bird_test <- bird |> 
   dplyr::select(c("surveyid", all_of(spp))) |> 
@@ -133,26 +139,27 @@ covs_latlon <- covs_test |>
 corr_test <- qpad_correction(covs_latlon,
                              species = c("LEFL", "CMWA", "HETH", "OVEN", "PIWO", "BTNW", "NOWA", "GRAJ", "RUGR", "YBSA", "DEJU", "BHCO", "CAWA", "OSFL")) |> 
   rename(CAJA = GRAJ) |> 
-  rowwise() |> 
-  mutate(CONI = mean(c_across(everything()))) |> 
-  ungroup()
+  mutate(surveyid = bird_test$surveyid)
 
-#6. BADR attribution ----
+#7. BADR attribution of after data ----
 
-# 6.1 Make an sf ----
-covs_sf <- covs_test |> 
+## 7.1 Get just the the post 2020 data to make this faster ----
+covs_test2 <- dplyr::filter(covs_test, year >= 2020)
+
+# 7.1 Make an sf ----
+covs_sf <- covs_test2 |> 
   st_as_sf(coords = c("Easting", "Northing"), crs=3400, remove=FALSE) |> 
   st_transform(raster::crs(lu))
 
-## 6.1 Make with 150 m buffer -----
+## 7.1 Make with 150 m buffer -----
 # get the area and transform to the badr object crs
-covs_buff <- covs_test |> 
+covs_buff <- covs_test2 |> 
   st_as_sf(coords = c("Easting", "Northing"), crs=3400, remove=FALSE) |> 
   st_buffer(150) |> 
   mutate(area = round(as.numeric(st_area(geometry)), 1)) |> 
   st_transform(raster::crs(lu))
 
-## 6.2 Get the lu attributes -----
+## 7.2 Get the lu attributes -----
 # there's 2 that are in 2 lus for some reason, so get 1 per surveyid
 set.seed(1234)
 covs_lu <- st_intersection(covs_sf, lu) |> 
@@ -161,15 +168,15 @@ covs_lu <- st_intersection(covs_sf, lu) |>
   sample_n(1) |> 
   ungroup()
 
-## 6.3 Get the BADR treatment proportions ----
+## 7.3 Get the BADR treatment proportions ----
 covs_tmnt <- covs_buff |> 
   st_intersection(badr) |> 
   mutate(tmntarea = as.numeric(st_area(geometry))/area) |> 
   st_drop_geometry() |> 
   pivot_wider(names_from=Treatment, values_from=tmntarea, values_fn=sum, values_fill=0)
 
-## 6.4 Put together ----
+## 7.4 Put together ----
 covs_badr <- inner_join(covs_lu, covs_tmnt)
 
-#7. Save -----
+#8. Save -----
 save(covs_test, bird_test, off_test, corr_test, covs_badr, file=file.path(rootout, "Deviation From Expected", "Data", "Test.Rdata"))
