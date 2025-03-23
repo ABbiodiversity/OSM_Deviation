@@ -18,10 +18,10 @@ library(mgcv) # GAMs
 root <- "G:/Shared drives/ABMI_ECKnight/Projects/OSM/Deviation From Expected"
 
 ## 1.3 Make new names for the covs ----
-names <- data.frame(var = c("badr_highwells", "badr_linear", "badr_lowwells", "badr_mine", "badr_minebuffer", "badr_reference", "badr_roads", "cei", "propallwel", "propcrop", "propinsitu", "propmine", "proproad", "propseismi", "year"),
-                    scale = c(rep("JEM", 7), rep("LU", 7), "time"),
-                    name = c("High impact wellsites", "Linear features", "Low impact wellsites", "Mine/plant", "Mine/plant buffer", "Reference", "Roads",
-                             "Cumulative footprint index", "Wellsites", "Cropland", "In situ", "Mine/plant", "Road", "Seismic lines",
+names <- data.frame(var = c("badr_highwells", "badr_linear", "badr_lowwells", "badr_mine", "badr_minebuffer", "badr_roads", "cei", "propallwel","proppipe", "propmine", "proproad", "propseismi", "year"),
+                    scale = c(rep("JEM", 6), rep("LU", 6), "time"),
+                    name = c("High impact wellsites", "Linear features", "Low impact wellsites", "Mine/plant", "Mine/plant buffer", "Roads",
+                             "Cumulative footprint index", "Wellsites",  "Pipelines", "Mine/plant", "Road", "Seismic lines",
                              "Year"))
 
 # 2. Load interpretation output ----
@@ -59,13 +59,20 @@ var <- do.call(rbind, var.list)
 int <- do.call(rbind, int.list)
 pred <- do.call(rbind, pred.list)
 
+## 2.6 Save for later ----
+write.csv(var, file.path(root, "Results", "BRTVariableImportance.csv"))
+write.csv(int, file.path(root, "Results", "BRTInteractions.csv"))
+write.csv(pred, file.path(root, "Results", "BRTPredictions.csv"))
+
 # 3. Variable importance ----
 
 ## 3.1 Visualize ----
 #looking at spread across boots
-ggplot(var) +
+ggplot(var |> 
+         dplyr::filter(species!="CONI")) +
   geom_point(aes(x=var, y=rel.inf)) +
-  facet_wrap(~species, scales = "free")
+  facet_wrap(~species, scales = "free_y") +
+  theme(axis.text.x = element_text(angle=45, vjust=1, hjust=1))
 
 ## 3.2 Summarize ----
 var.sum <- var |> 
