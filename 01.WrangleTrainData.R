@@ -51,9 +51,11 @@ covs_aoi <- covs |>
   dplyr::filter(locationid %in% loc_aoi$locationid)
 
 ## 3.3 Split out training data based on year ----
+#also take out eBird because of qpad bug
 covs_train <- covs_aoi |> 
   mutate(year = year + 1992) |> 
-  dplyr::filter(year < 2020, year >= 2010)
+  dplyr::filter(year < 2020, year >= 2010,
+                organization!="eBird")
 
 ## 3.4 Filter the other objects -----
 
