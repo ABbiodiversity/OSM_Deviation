@@ -149,7 +149,7 @@ model_climate <- function(i){
 #RUN MODELS###############
 
 #1. Set species list----
-spp <- sort(c("CONI", "LEFL", "CMWA", "HETH", "OVEN", "PIWO", "BTNW", "NOWA", "CAJA", "RUGR", "YBSA", "DEJU", "BHCO", "CAWA", "OSFL"))
+spp <- sort(c("LEFL", "CMWA", "HETH", "OVEN", "PIWO", "BTNW", "NOWA", "CAJA", "RUGR", "YBSA", "DEJU", "BHCO", "CAWA", "OSFL"))
 
 #2. Set bootstrap list----
 b <- c(1:25)
