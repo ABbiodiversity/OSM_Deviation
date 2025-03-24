@@ -146,12 +146,12 @@ pred <- read.csv(file.path(root, "Deviation From Expected", "Results", "Predicti
 ## 4.2 Summarize ----
 pred.sum <- pred |> 
   dplyr::filter(species!="CONI") |> 
-  group_by(species, boot) |> 
+  group_by(dataset, species, boot) |> 
   summarize(diff_mn = mean(residual),
             pred_mn = mean(prediction)) |> 
   ungroup() |> 
   mutate(perc_mn = diff_mn/pred_mn*100) |> 
-  group_by(species) |> 
+  group_by(dataset, species) |> 
   summarize(mn = mean(perc_mn),
             se = sd(perc_mn)/5) |> 
   ungroup() |> 
@@ -161,7 +161,7 @@ pred.sum <- pred |>
 ## 4.3 Plot ----
 plot.dev <- ggplot(pred.sum) +
   geom_errorbar(aes(x=species, ymin = mn-1.96*se, ymax = mn+1.96*se), colour="grey30") +
-  geom_point(aes(x=species, y=mn, fill=guild), pch=21, alpha=0.7, colour="grey30", size=2) +
+  geom_point(aes(x=species, y=mn, group=dataset, fill=dataset), pch=21, alpha=0.7, colour="grey30", size=2, position="dodge") +
   geom_hline(aes(yintercept=0), linetype="dashed") +
   theme_classic() +
   theme(axis.text.x = element_text(angle = 45, hjust=1, vjust=1),
