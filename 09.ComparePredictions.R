@@ -3,7 +3,7 @@
 # author: "Elly Knight"
 # created: "2025-03-23"
 # inputs: "output from `08.MakePredictions.R`
-# outputs: none
+# outputs: "paired t-test results"
 # notes:
 
 # ---
