@@ -2,8 +2,8 @@
 # title: "11. Package habitat suitability coefficients"
 # author: "Elly Knight"
 # created: "2025-03-22"
-# inputs: selected model
-# outputs: dataframe of standardized coefficients
+# inputs: "selected models"
+# outputs: "dataframe of standardized coefficients"
 # notes:
 
 # ---
@@ -66,6 +66,8 @@ colnames(age) <- fix_names(colnames(age))
 load(file.path(root, "Data", "Train.Rdata"))
 
 # 2. Package landcover coefficients ----
+
+#pack it up pack it in, let me begin
 
 ## 2.1 Get list of species----
 spp <- unique(mods$species)

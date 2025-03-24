@@ -2,9 +2,9 @@
 # title: "05.MakePredictions"
 # author: "Elly Knight"
 # created: "2025-03-03"
-# inputs: test data object from `02.WrangleData.R` and model predictions from `03.ModelClimate.R` and `04ModelLandcover.R`
-# outputs: out of sample predictions to explore variation in residuals
-# notes: 
+# inputs: "test data object from `02.WrangleData.R` and model predictions from `03.ModelClimate.R` and `04ModelLandcover.R"
+# outputs: "out of sample predictions to explore variation in residuals"
+# notes: "Hello Marcus"
 # ---
 
 #PREAMBLE############################

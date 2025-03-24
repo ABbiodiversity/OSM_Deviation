@@ -180,7 +180,7 @@ if(nrow(loop) > 0){
   tmpcl <- clusterExport(cl, c("loop"))
   
   #7. Run BRT function in parallel----
-  print("* Fitting models *")
+  print("* Makin' some mods *")
   mods <- parLapply(cl,
                     X=1:nrow(loop),
                     fun=model_climate)

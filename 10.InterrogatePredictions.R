@@ -27,7 +27,7 @@ load(file.path(root, "Data", "Test.Rdata"))
 ## 1.5 Load predictions ----
 pred <- read.csv(file.path(root, "Results", "Predictions.csv")) 
 
-# 2. Binarize BADR & LU covs ----
+# 2. Wrangling ----
 
 ## 2.1 Tidy names etc ----
 covs_use <- covs_badr |> 
@@ -38,40 +38,16 @@ covs_use <- covs_badr |>
          badr_lowwells = `Low Activity Well Pads`,
          badr_minebuffer = `Plant/Mine Buffer`,
          badr_reference = `Low Disturbance/Reference`) |> 
-  dplyr::select(surveyid, cei, propmine, proproad, propseismi, propallwel, proppipe, badr_highwells, badr_roads, badr_mine, badr_linear, badr_lowwells, badr_minebuffer) |> 
-  pivot_longer(-c(surveyid), names_to="var", values_to="val")
+  dplyr::select(surveyid, cei, proproad, propseismi, propallwel, proppipe, badr_highwells, badr_roads, badr_linear, badr_lowwells, badr_minebuffer)
 
-## 2.2 Use quantiles for landscape variables ----
-covs_lu <- covs_use |> 
-  dplyr::filter(var %in% c("cei", "propmine", "proproad", "propseismi", "propallwel", "proppipe")) |> 
-  group_by(var) |> 
-  mutate(class = case_when(val < quantile(val, 0.2) ~ "low",
-                           val >= quantile(val, 0.2) & val <= quantile(val, 0.8) ~ "medium",
-                           val > quantile(val, 0.8) ~ "high")) |> 
+## 2.2 Wrangle predictions ----
+pred_use <- pred |> 
+  dplyr::filter(dataset=="forecast") |> 
+  group_by(species, surveyid) |> 
+  summarize(residual_mn = mean(residual)) |> 
   ungroup()
 
-table(covs_lu$var, covs_lu$class)
-
-## 2.3 Use values for local variables ----
-covs_jem <- covs_use |> 
-  dplyr::filter(var %in% c("badr_highwells", "badr_roads", "badr_linear", "badr_lowwells", "badr_minebuffer")) |> 
-  mutate(class = case_when(val==0 ~ "low",
-                           val > 0 & val <= 0.8 ~ "medium",
-                            val > 0.8 ~ "high"))
-
-table(covs_jem$var, covs_jem$class)
-
-## 2.4 Put together ----
-covs_class <- rbind(covs_lu, covs_jem) |> 
-  dplyr::select(-val) |> 
-  mutate(class = factor(class, levels = c("low", "medium", "high"))) |> 
-  pivot_wider(names_from=var, values_from=class)
-
 # 3. Model deviation by oil and gas features ----
-
-## 3.2 Wrangle predictions ----
-pred_use <- pred |> 
-  dplyr::filter(dataset=="forecast")
 
 ## 3.1 Set up species loop ----
 spp <- unique(pred$species)
@@ -84,23 +60,20 @@ for(i in 1:length(spp)){
   
   ## 3.2 Filter data
   pred.i <- dplyr::filter(pred_use, species==spp[i]) |> 
-    group_by(surveyid) |> 
-    summarize(residual_mn = mean(residual)) |> 
-    ungroup() |> 
-    left_join(covs_class)
+    left_join(covs_use)
   
   dat.list[[i]] <- pred.i
   
   ## 3.3 Try a model ----
-  lm.i <- lm(residual_mn ~ cei + propmine + proproad + propseismi + propallwel + proppipe + badr_highwells + badr_roads + badr_linear + badr_lowwells + badr_minebuffer, data=pred.i, na.action="na.fail")
+  lm.i <- lm(residual_mn ~ cei + proproad + propseismi + propallwel + proppipe + badr_highwells + badr_roads + badr_linear + badr_lowwells + badr_minebuffer, data=pred.i, na.action="na.fail")
   
   ## 3.4 Dredge it ----
   dredge.list[[i]] <- dredge(lm.i)
   
-  ## 3.5 Most parsimonious within delta 2 ----
+  ## 3.5 Most parsimonious within delta 5 ----
   dredge.i <- data.frame(dredge.list[[i]]) |> 
     mutate(mod = row_number()) |> 
-    dplyr::filter(delta < 2) |>
+    dplyr::filter(delta < 5) |>
     dplyr::filter(df==min(df)) |> 
     dplyr::filter(delta==min(delta))
   
@@ -129,29 +102,22 @@ colnames(out_raw) <- c("var", "estimate", "se", "t", "p", "weight", "df", "r2", 
 
 ## 3.9 Tidy the summary ----
 out <- out_raw |> 
-  mutate(class = str_sub(var, -4, -1),
-         class = ifelse(class=="high", "high", "medium")) |> 
-  dplyr::filter(class=="high",
-                p < 0.05) |> 
-  mutate(var = str_sub(var, -100, -5))
+  dplyr::filter(var!="(Intercept)")
 
-## 3.10 Join back to the data ----
-dat.out <- dat |> 
-  pivot_longer(-c(surveyid, residual_mn), names_to="var", values_to="val") |> 
-  inner_join(out, relationship="many-to-many") |> 
-  dplyr::filter(val!="medium")
+## 3.10 Plot ----
+#ok let's see what we get! The data present of the whole project
+ggplot(out) + 
+  geom_errorbar(aes(x=species, ymin = estimate-1.96*se, ymax = estimate+1.96*se, colour=var)) +
+  geom_point(aes(x=species, y=estimate, colour=var)) +
+  geom_hline(aes(yintercept=0), linetype="dashed") +
+  facet_wrap(~var, scales="free")
 
-## 3.11 Plot ----
-ggplot(dat.out |> dplyr::filter(species=="OVEN")) +
-  geom_boxplot(aes(x=val, y=log(residual_mn), fill=estimate))+
-  facet_wrap(~var) +
-  scale_fill_gradient2()
-
-
-## 3.9 Save ----
-save(lm.list, dredge.list, out, file.path(root, "Results", "ModelsOfDeviation.Rdata"))
+## 3.11 Save ----
+save(lm.list, dredge.list, out, file=file.path(root, "Results", "ModelsOfDeviation.Rdata"))
 
 # 4. Model deviation by year -----
+
+#seems cute, might delete later
 
 ## 4.1 Put together ----
 pred_year <- pred |> 

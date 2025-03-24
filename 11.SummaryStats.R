@@ -165,3 +165,17 @@ app2 <- ts |>
   dplyr::select(species, t, p, difference) 
 
 write.csv(app2, file.path(root, "Deviation From Expected", "Results", "Appendix2.csv"), row.names = FALSE)
+
+# 5. Correlates of deviation from expected ----
+
+## 5.1 Get the summary ----
+load(file.path(root, "Results", "ModelsOfDeviation.Rdata"))
+
+## 5.2 Summarize across species & vars ----
+mean(out$estimate)
+sd(out$estimate)
+
+## 5.3 R2 ----
+out |> 
+  dplyr::select(species, r2) |> 
+  unique()

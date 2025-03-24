@@ -13,6 +13,7 @@
 ## 1.1 Load packages ----
 library(tidyverse) # data manipulation and visualization
 library(sf)
+library(paletteer)
 
 ## 1.2 Set GD roots----
 root <- "G:/Shared drives/ABMI_ECKnight/Projects/OSM"
@@ -25,6 +26,11 @@ spp <- data.frame(species = c("LEFL", "BTNW", "CMWA", "HETH", "OVEN", "PIWO", "N
                             rep("Mixedwood/generalist species", 4),
                             "Nest parasite species",
                             rep("Species at risk", 2)))
+
+## 1.4 Guild colours ----
+guilds1 <- paletteer_d("ggthemes::excel_Feathered")
+guilds <- guilds1[c(1,2,5,4,3,6)]
+#Yeah that's right it's a bird palette, obviously
 
 # 2. Study area figure ----
 
@@ -112,7 +118,7 @@ pred.sum <- pred |>
   dplyr::filter(species!="CONI") |> 
   mutate(species = factor(species, levels=c("LEFL", "BTNW", "CMWA", "HETH", "OVEN", "PIWO", "NOWA", "CAJA", "DEJU", "RUGR", "YBSA", "BHCO", "CAWA", "OSFL")))
 
-## 3.4 Tidy & put together for plotting ----
+## 3.6 Tidy & put together for plotting ----
 coef.tidy <- coef.sum |> 
   dplyr::filter(var %in% c("Wellsites", "EnSeismic", "EnSoftLin", "Industrial", "MineV", "Other"))  |> 
   left_join(spp) |> 
@@ -120,23 +126,25 @@ coef.tidy <- coef.sum |>
          var = factor(var, levels=c("Other", "EnSeismic", "EnSoftLin", "Wellsites", "Industrial", "MineV"),
                       labels = c("Other", "Seismic lines", "Roads", "Well pads", "Industrial", "Mine buffer")))
 
-## 3.3 Plot ----
+## 3.7 Plot ----
 plot.coef <- ggplot(coef.tidy) + 
   geom_rect(data=pred.sum, aes(xmin = -Inf, xmax = Inf, ymin=mn-1.96*se, ymax=mn+1.96*se), alpha = 0.2, fill="grey70") +
   geom_hline(data=pred.sum, aes(yintercept = mn), linetype="dashed", colour="grey70") +
-  geom_errorbar(aes(x=var, ymin = mn-1.96*se, ymax = mn+1.96*se), colour="grey30") +
-  geom_point(aes(x=var, y=mn, fill=guild), pch=21, alpha=0.7, size=2, colour="grey30") +
+  geom_errorbar(aes(x=var, ymin = mn-1.96*se, ymax = mn+1.96*se, colour=guild)) +
+  geom_point(aes(x=var, y=mn, fill=guild, colour=guild), pch=21, alpha=0.5, size=2) +
   theme_classic() +
   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
         legend.position ="bottom",
         legend.title = element_blank()) +
+  scale_colour_manual(values=guilds) +
+  scale_fill_manual(values=guilds) +
   facet_wrap(~species, ncol=3, scales="free_y") +
   xlab("Oil and gas footprint type") +
   ylab("Density (birds/ha)") +
   guides(fill=guide_legend(nrow=2))
 plot.coef
 
-ggsave(plot.coef, file=file.path(root, "Deviation From Expected", "Figures", "Suitability.jpeg"), width =10, height = 12)
+ggsave(plot.coef, file=file.path(root, "Deviation From Expected", "Figures", "Suitability.jpeg"), width = 8, height = 10)
   
 # 4. Deviation from expected ----
 
@@ -156,22 +164,55 @@ pred.sum <- pred |>
             se = sd(perc_mn)/5) |> 
   ungroup() |> 
   left_join(spp) |> 
-  mutate(species = factor(species, levels=c("LEFL", "BTNW", "CMWA", "HETH", "OVEN", "PIWO", "NOWA", "CAJA", "DEJU", "RUGR", "YBSA", "BHCO", "CAWA", "OSFL")))
+  mutate(species = factor(species, levels=c("LEFL", "BTNW", "CMWA", "HETH", "OVEN", "PIWO", "NOWA", "CAJA", "DEJU", "RUGR", "YBSA", "BHCO", "CAWA", "OSFL")),
+         dataset = factor(dataset, levels=c("test", "forecast"), labels=c("Test", "Forecast")))
 
 ## 4.3 Plot ----
 plot.dev <- ggplot(pred.sum) +
-  geom_errorbar(aes(x=species, ymin = mn-1.96*se, ymax = mn+1.96*se), colour="grey30") +
-  geom_point(aes(x=species, y=mn, group=dataset, fill=dataset), pch=21, alpha=0.7, colour="grey30", size=2, position="dodge") +
+  geom_errorbar(aes(x=species, ymin = mn-1.96*se, ymax = mn+1.96*se, group=dataset, colour=dataset), position=position_dodge(width=1)) +
+  geom_point(aes(x=species, y=mn, group=dataset, fill=dataset, colour=dataset), pch=21, alpha=0.5, size=2, position=position_dodge(width = 1)) +
   geom_hline(aes(yintercept=0), linetype="dashed") +
+  scale_fill_manual(values=c("grey20", "grey70"), name="Dataset") +
+  scale_colour_manual(values=c("grey20", "grey70"), name="Dataset") +
   theme_classic() +
   theme(axis.text.x = element_text(angle = 45, hjust=1, vjust=1),
         axis.title.x = element_blank(),
-        legend.position = "bottom",
-        legend.title = element_blank()) +
+        legend.position = "bottom") +
   ylab("Percent difference in density between predicted and observed")
 plot.dev
 
 ggsave(plot.dev, file=file.path(root, "Deviation From Expected", "Figures", "Deviation.jpeg"), width =8, height = 6)
+
+# 5. Drivers of deviation ----
+
+## 5.1 Load data ----
+load(file.path(root, "Deviation From Expected", "Results", "ModelsOfDeviation.Rdata"))
+
+## 5.2 Some wrangling----
+out_plot <- out |> 
+  left_join(spp) |> 
+  mutate(species = factor(species, levels=c("LEFL", "BTNW", "CMWA", "HETH", "OVEN", "PIWO", "NOWA", "CAJA", "DEJU", "RUGR", "YBSA", "BHCO", "CAWA", "OSFL")),
+         scale = ifelse(var %in% c("proproad", "propseismi", "propmine", "cei", "propallwel", "proppipe"), "Landscape", "Local"),
+         var = factor(var, levels=c("badr_linear", "badr_lowwells", "badr_roads", "badr_highwells", "badr_minebuffer", "propseismi", "proproad", "propallwel", "proppipe", "propmine", "cei"),
+                      labels = c("Local - dense linear features", "Local - low activity well pads", "Local - roads", "Local - high activity well pads", "Local - plant/mine buffer", "Landscape - seismic lines", "Landscape - roads", "Landscape - well pads", "Landscape - pipelines", "Landscape - plant/mine", "Landscape - cumulative footprint index")))
+
+## 5.3 Plot ----
+plot.effects <- ggplot(out_plot) + 
+  geom_errorbar(aes(x=species, ymin = estimate-1.96*se, ymax = estimate+1.96*se, colour=guild)) +
+  geom_point(aes(x=species, y=estimate, colour=guild)) +
+  geom_hline(aes(yintercept=0), linetype="dashed") +
+  facet_wrap(~var, scales="free", ncol=3) +
+  scale_colour_manual(values=guilds) +
+  scale_fill_manual(values=guilds) +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust=1, vjust=1),
+        axis.title.x = element_blank(),
+        legend.title = element_blank(),
+        legend.position = "bottom") +
+  ylab("Effect on deviation from expected (birds/ha)")
+plot.effects
+
+ggsave(plot.effects, file=file.path(root, "Deviation From Expected", "Figures", "Deviation_Effects.jpeg"), width=8, height = 10)
 
 # X. Individual suitability plots ----
 

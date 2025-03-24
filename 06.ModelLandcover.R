@@ -174,7 +174,7 @@ if(nrow(loop) > 0){
   tmpcl <- clusterExport(cl, c("loop"))
   
   #4. Run prediction function in parallel----
-  print("* Fitting models *")
+  print("* Makin' some more mods *")
   mods <- parLapply(cl,
                     X=1:nrow(loop),
                     fun=model_landcover)

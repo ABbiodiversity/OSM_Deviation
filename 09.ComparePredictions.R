@@ -83,8 +83,3 @@ for(i in 1:length(spp)){
 
 ## 3.4 Save results ----
 write.csv(out, file.path(root, "Results", "PredictionComparison.csv"), row.names = FALSE)
-
-## 3.5 Linear model??? ----
-
-lm1 <- lm(perc_mn ~ dataset + species, data=pred.sum)
-summary(lm1)
