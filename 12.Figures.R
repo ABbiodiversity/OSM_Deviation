@@ -65,8 +65,8 @@ covs_plot <- covs_train |>
   mutate(Plot = "Train") |> 
   rbind(covs_test |> 
           dplyr::select(Easting, Northing, year) |> 
-          mutate(Plot = "Test")) |> 
-  mutate(Plot = factor(Plot, levels = c("Train", "Test")),
+          mutate(Plot = ifelse(year < 2020, "Test", "Forecast"))) |> 
+  mutate(Plot = factor(Plot, levels = c("Train", "Test", "Forecast")),
          Year = as.integer(year))
 
 ## 2.6 Plot ----
@@ -83,7 +83,7 @@ plot.sa <- ggplot() +
   ylab("")
 plot.sa
 
-ggsave(plot.sa, file=file.path(root,"Deviation From Expected", "Figures", "StudyArea.jpeg"), width =10, height = 8)
+ggsave(plot.sa, file=file.path(root,"Deviation From Expected", "Figures", "StudyArea.jpeg"), width =8, height = 6)
   
 # 3. Suitability coefficients ----
 
