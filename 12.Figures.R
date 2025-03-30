@@ -169,11 +169,12 @@ pred.sum <- pred |>
 
 ## 4.3 Plot ----
 plot.dev <- ggplot(pred.sum) +
-  geom_errorbar(aes(x=species, ymin = mn-1.96*se, ymax = mn+1.96*se, group=dataset, colour=dataset), position=position_dodge(width=1)) +
-  geom_point(aes(x=species, y=mn, group=dataset, fill=dataset, colour=dataset), pch=21, alpha=0.5, size=2, position=position_dodge(width = 1)) +
+  geom_errorbar(aes(x=species, ymin = mn-1.96*se, ymax = mn+1.96*se, group=dataset, alpha=dataset, colour=guild)) +
+  geom_point(aes(x=species, y=mn, group=dataset, alpha=dataset, colour=guild), size=3) +
   geom_hline(aes(yintercept=0), linetype="dashed") +
-  scale_fill_manual(values=c("grey20", "grey70"), name="Dataset") +
-  scale_colour_manual(values=c("grey20", "grey70"), name="Dataset") +
+  scale_fill_manual(values=guilds, name="") +
+  scale_colour_manual(values=guilds, name="") +
+  scale_alpha_manual(values=c(0.4, 1), name="Dataset") +
   theme_classic() +
   theme(axis.text.x = element_text(angle = 45, hjust=1, vjust=1),
         axis.title.x = element_blank(),
@@ -259,8 +260,28 @@ for(i in 1:nrow(spp)){
     ggtitle(spp$species[i])
 
   ## X.7 Save ----
-  ggsave(file.path(root, "Deviation From Expected", "Figures", "Suitability_species", paste0(spp$species[i], ".jpg")), width = 10, height = 6)
+  ggsave(file.path(root, "Deviation From Expected", "Figures", "Suitability_species", paste0(spp$species[i], ".jpg")), width = 12, height = 4)
   
   cat(spp$species[i], "  ")
   
 }
+
+#Y. AIC tables -----
+
+## Y.1 Get the dredgies ----
+load(file.path(root, "Deviation From Expected", "Results", "DredgeList.Rdata"))
+
+## Y.2 Get just the models within delta AIC = 5----
+dredge.out <- list()
+for(i in 1:length(dredge.list)){
+  
+  dredge.out[[i]] <- dredge.list[[i]] |> 
+    data.frame() |> 
+    dplyr::filter(delta <= 2) |> 
+    mutate(species = names(dredge.list)[[i]]) |> 
+    dplyr::select(species, df, logLik, AICc, delta, weight)
+}
+
+dredge <- do.call(rbind, dredge.out)
+
+write.csv(dredge, file.path(root, "Deviation From Expected", "Results", "AICTable.csv"), row.names = FALSE)
