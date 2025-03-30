@@ -130,10 +130,12 @@ coef.tidy <- coef.sum |>
 plot.coef <- ggplot(coef.tidy) + 
   geom_rect(data=pred.sum, aes(xmin = -Inf, xmax = Inf, ymin=mn-1.96*se, ymax=mn+1.96*se), alpha = 0.2, fill="grey70") +
   geom_hline(data=pred.sum, aes(yintercept = mn), linetype="dashed", colour="grey70") +
-  geom_errorbar(aes(x=var, ymin = mn-1.96*se, ymax = mn+1.96*se, colour=guild)) +
-  geom_point(aes(x=var, y=mn, fill=guild, colour=guild), pch=21, alpha=0.5, size=2) +
+  geom_errorbar(aes(x=var, ymin = mn-1.96*se, ymax = mn+1.96*se, colour=guild), width=0.25) +
+  geom_point(aes(x=var, y=mn, fill=guild, colour=guild), pch=21, size=2.75) +
   theme_classic() +
   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+        axis.title.x = element_text(size=14),
+        axis.title.y = element_text(size=14),
         legend.position ="bottom",
         legend.title = element_blank()) +
   scale_colour_manual(values=guilds) +
@@ -169,8 +171,8 @@ pred.sum <- pred |>
 
 ## 4.3 Plot ----
 plot.dev <- ggplot(pred.sum) +
-  geom_errorbar(aes(x=species, ymin = mn-1.96*se, ymax = mn+1.96*se, group=dataset, alpha=dataset, colour=guild)) +
-  geom_point(aes(x=species, y=mn, group=dataset, alpha=dataset, colour=guild), size=3) +
+  geom_errorbar(aes(x=species, ymin = mn-1.96*se, ymax = mn+1.96*se, group=dataset, alpha=dataset, colour=guild), width=0.25) +
+  geom_point(aes(x=species, y=mn, group=dataset, alpha=dataset, colour=guild), size=2.75) +
   geom_hline(aes(yintercept=0), linetype="dashed") +
   scale_fill_manual(values=guilds, name="") +
   scale_colour_manual(values=guilds, name="") +
@@ -178,11 +180,12 @@ plot.dev <- ggplot(pred.sum) +
   theme_classic() +
   theme(axis.text.x = element_text(angle = 45, hjust=1, vjust=1),
         axis.title.x = element_blank(),
+        axis.title.y = element_text(size=14),
         legend.position = "bottom") +
-  ylab("Percent difference in density between predicted and observed")
+  ylab("Percent difference in density\nbetween predicted and observed")
 plot.dev
 
-ggsave(plot.dev, file=file.path(root, "Deviation From Expected", "Figures", "Deviation.jpeg"), width =8, height = 6)
+ggsave(plot.dev, file=file.path(root, "Deviation From Expected", "Figures", "Deviation.jpeg"), width =9, height = 6)
 
 # 5. Drivers of deviation ----
 
@@ -190,30 +193,34 @@ ggsave(plot.dev, file=file.path(root, "Deviation From Expected", "Figures", "Dev
 load(file.path(root, "Deviation From Expected", "Results", "ModelsOfDeviation.Rdata"))
 
 ## 5.2 Some wrangling----
-out_plot <- out |> 
+out_plot <- out_raw |> 
+  dplyr::filter(var!="(Intercept)") |> 
   left_join(spp) |> 
   mutate(species = factor(species, levels=c("LEFL", "BTNW", "CMWA", "HETH", "OVEN", "PIWO", "NOWA", "CAJA", "DEJU", "RUGR", "YBSA", "BHCO", "CAWA", "OSFL")),
          scale = ifelse(var %in% c("proproad", "propseismi", "propmine", "cei", "propallwel", "proppipe"), "Landscape", "Local"),
          var = factor(var, levels=c("badr_linear", "badr_lowwells", "badr_roads", "badr_highwells", "badr_minebuffer", "propseismi", "proproad", "propallwel", "proppipe", "propmine", "cei"),
-                      labels = c("Local - dense linear features", "Local - low activity well pads", "Local - roads", "Local - high activity well pads", "Local - plant/mine buffer", "Landscape - seismic lines", "Landscape - roads", "Landscape - well pads", "Landscape - pipelines", "Landscape - plant/mine", "Landscape - cumulative footprint index")))
+                      labels = c("Local - dense linear features", "Local - low activity well pads", "Local - roads", "Local - high activity well pads", "Local - plant/mine buffer", "Landscape - seismic lines", "Landscape - roads", "Landscape - well pads", "Landscape - pipelines", "Landscape - plant/mine", "Landscape - cumulative footprint index")),
+         Interpretation = ifelse(p < 0.01, "Significant", "Nonsigificant"))
 
 ## 5.3 Plot ----
 plot.effects <- ggplot(out_plot) + 
-  geom_errorbar(aes(x=species, ymin = estimate-1.96*se, ymax = estimate+1.96*se, colour=guild)) +
-  geom_point(aes(x=species, y=estimate, colour=guild)) +
+  geom_errorbar(aes(x=species, ymin = estimate-1.96*se, ymax = estimate+1.96*se, colour=guild, alpha=Interpretation),
+                width=0.25) +
+  geom_point(aes(x=species, y=estimate, colour=guild, alpha = Interpretation),
+             size=2.75) +
   geom_hline(aes(yintercept=0), linetype="dashed") +
-  facet_wrap(~var, scales="free", ncol=3) +
-  scale_colour_manual(values=guilds) +
-  scale_fill_manual(values=guilds) +
+  facet_wrap(~var, scales="free_y", ncol=3) +
+  scale_colour_manual(values=guilds, name="") +
+  scale_fill_manual(values=guilds, name="") +
+  scale_alpha_manual(values=c(0.3, 1))+
   theme_classic() +
   theme(axis.text.x = element_text(angle = 45, hjust=1, vjust=1),
         axis.title.x = element_blank(),
-        legend.title = element_blank(),
         legend.position = "bottom") +
   ylab("Effect on deviation from expected (birds/ha)")
 plot.effects
 
-ggsave(plot.effects, file=file.path(root, "Deviation From Expected", "Figures", "Deviation_Effects.jpeg"), width=8, height = 10)
+ggsave(plot.effects, file=file.path(root, "Deviation From Expected", "Figures", "Deviation_Effects.jpeg"), width=9, height = 10)
 
 # X. Individual suitability plots ----
 
@@ -265,23 +272,3 @@ for(i in 1:nrow(spp)){
   cat(spp$species[i], "  ")
   
 }
-
-#Y. AIC tables -----
-
-## Y.1 Get the dredgies ----
-load(file.path(root, "Deviation From Expected", "Results", "DredgeList.Rdata"))
-
-## Y.2 Get just the models within delta AIC = 5----
-dredge.out <- list()
-for(i in 1:length(dredge.list)){
-  
-  dredge.out[[i]] <- dredge.list[[i]] |> 
-    data.frame() |> 
-    dplyr::filter(delta <= 2) |> 
-    mutate(species = names(dredge.list)[[i]]) |> 
-    dplyr::select(species, df, logLik, AICc, delta, weight)
-}
-
-dredge <- do.call(rbind, dredge.out)
-
-write.csv(dredge, file.path(root, "Deviation From Expected", "Results", "AICTable.csv"), row.names = FALSE)

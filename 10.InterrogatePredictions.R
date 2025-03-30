@@ -53,7 +53,6 @@ pred_use <- pred |>
 spp <- unique(pred$species)
 
 lm.list <- list()
-dredge.list <- list()
 out.list <- list()
 dat.list <- list()
 for(i in 1:length(spp)){
@@ -65,28 +64,13 @@ for(i in 1:length(spp)){
   dat.list[[i]] <- pred.i
   
   ## 3.3 Try a model ----
-  lm.i <- lm(residual_mn ~ cei + proproad + propseismi + propallwel + proppipe + badr_highwells + badr_roads + badr_linear + badr_lowwells + badr_minebuffer, data=pred.i, na.action="na.fail")
-  
-  ## 3.4 Dredge it ----
-  dredge.list[[i]] <- dredge(lm.i)
-  
-  ## 3.5 Most parsimonious within delta 5 ----
-  dredge.i <- data.frame(dredge.list[[i]]) |> 
-    mutate(mod = row_number()) |> 
-    dplyr::filter(delta < 5) |>
-    dplyr::filter(df==min(df)) |> 
-    dplyr::filter(delta==min(delta))
-  
-  ## 3.6 Get the model ----
-  lm.list[[i]] <- get.models(dredge.list[[i]], subset=dredge.i$mod)[[1]]
+  lm.list[[i]] <- lm(residual_mn ~ cei + proproad + propseismi + propallwel + proppipe + badr_highwells + badr_roads + badr_linear + badr_lowwells + badr_minebuffer, data=pred.i, na.action="na.fail")
   
   ## 3.7 Summarize ----
   sum.i <- summary(lm.list[[i]])
   out.list[[i]] <- data.frame(sum.i$coefficients) |> 
     rownames_to_column() |> 
-    mutate(weight = dredge.list[[i]]$weight[1],
-           df = dredge.list[[i]]$df[1],
-           R2 = sum.i$adj.r.squared,
+    mutate(R2 = sum.i$adj.r.squared,
            species = spp[i])
   
   cat(i , "  ")
@@ -95,28 +79,25 @@ for(i in 1:length(spp)){
 
 ## 3.8 Name the lists & collapse ----
 names(lm.list) <- spp
-names(dredge.list) <- spp
-dat <- do.call(rbind, dat.list)
 out_raw <- do.call(rbind, out.list)
-colnames(out_raw) <- c("var", "estimate", "se", "t", "p", "weight", "df", "r2", "species")
-
-#save dredge lists for AIC tables
-save(dredge.list, file=file.path(root, "Results", "DredgeList.Rdata"))
+colnames(out_raw) <- c("var", "estimate", "se", "t", "p", "r2", "species")
 
 ## 3.9 Tidy the summary ----
 out <- out_raw |> 
-  dplyr::filter(var!="(Intercept)")
+  dplyr::filter(var!="(Intercept)") |> 
+  mutate(sig = ifelse(p < 0.01, "significant", "nonsignificant"))
 
 ## 3.10 Plot ----
 #ok let's see what we get! The data present of the whole project
-ggplot(out) + 
+ggplot(out |> 
+         dplyr::filter(sig=="significant")) + 
   geom_errorbar(aes(x=species, ymin = estimate-1.96*se, ymax = estimate+1.96*se, colour=var)) +
   geom_point(aes(x=species, y=estimate, colour=var)) +
   geom_hline(aes(yintercept=0), linetype="dashed") +
   facet_wrap(~var, scales="free")
 
 ## 3.11 Save ----
-save(lm.list, dredge.list, out, file=file.path(root, "Results", "ModelsOfDeviation.Rdata"))
+save(lm.list, dredge.list, out_raw, file=file.path(root, "Results", "ModelsOfDeviation.Rdata"))
 
 # 4. Model deviation by year -----
 
