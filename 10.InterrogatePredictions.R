@@ -100,6 +100,9 @@ dat <- do.call(rbind, dat.list)
 out_raw <- do.call(rbind, out.list)
 colnames(out_raw) <- c("var", "estimate", "se", "t", "p", "weight", "df", "r2", "species")
 
+#save dredge lists for AIC tables
+save(dredge.list, file=file.path(root, "Results", "DredgeList.Rdata"))
+
 ## 3.9 Tidy the summary ----
 out <- out_raw |> 
   dplyr::filter(var!="(Intercept)")
