@@ -13,6 +13,7 @@
 ## 1.1 Load packages ----
 library(tidyverse) # data manipulation and visualization
 library(sf)
+library(wildrtrax) # project list
 
 ## 1.2 Set GD roots----
 root <- "G:/Shared drives/ABMI_ECKnight/Projects/OSM/Deviation From Expected"
@@ -31,11 +32,21 @@ covs_train |>
   dplyr::filter(use=="train") |> 
   nrow()
 
+covs_train |> 
+  dplyr::filter(use=="test") |> 
+  nrow()
+
 nrow(covs_test)
 
 ## 2.3 Number of unique locations ----
 covs_train |> 
   dplyr::filter(use=="train") |> 
+  dplyr::select(Easting, Northing) |> 
+  unique() |> 
+  nrow()
+
+covs_train |> 
+  dplyr::filter(use=="test") |> 
   dplyr::select(Easting, Northing) |> 
   unique() |> 
   nrow()
@@ -46,11 +57,20 @@ covs_test |>
   nrow()
 
 ## 2.4 Number of detections ----
-summary(bird_test)
 
 #Per species
 covs_train |> 
   dplyr::filter(use=="train") |> 
+  dplyr::select(surveyid) |> 
+  left_join(bird_train) |> 
+  dplyr::select(all_of(colnames(bird_test))) |> 
+  pivot_longer(-surveyid, names_to="species", values_to="count") |> 
+  dplyr::filter(count > 0) |> 
+  group_by(species) |> 
+  summarize(n=n())
+
+covs_train |> 
+  dplyr::filter(use=="test") |> 
   dplyr::select(surveyid) |> 
   left_join(bird_train) |> 
   dplyr::select(all_of(colnames(bird_test))) |> 
@@ -68,6 +88,19 @@ bird_test |>
 #Across species
 covs_train |> 
   dplyr::filter(use=="train") |> 
+  dplyr::select(surveyid) |> 
+  left_join(bird_train) |> 
+  dplyr::select(all_of(colnames(bird_test))) |> 
+  pivot_longer(-surveyid, names_to="species", values_to="count") |> 
+  dplyr::filter(count > 0) |> 
+  group_by(species) |> 
+  summarize(n=n()) |> 
+  ungroup() |> 
+  summarize(mn = mean(n),
+            sd = sd(n))
+
+covs_train |> 
+  dplyr::filter(use=="test") |> 
   dplyr::select(surveyid) |> 
   left_join(bird_train) |> 
   dplyr::select(all_of(colnames(bird_test))) |> 
@@ -101,6 +134,18 @@ covs_train |>
             mn = mean(count),
             sd = sd(count))
 
+covs_train |> 
+  dplyr::filter(use=="test") |> 
+  dplyr::select(surveyid) |> 
+  left_join(bird_train) |> 
+  dplyr::select(all_of(colnames(bird_test))) |> 
+  pivot_longer(-surveyid, names_to="species", values_to="count") |> 
+  dplyr::filter(count > 0) |> 
+  summarize(min = min(count),
+            max = max(count),
+            mn = mean(count),
+            sd = sd(count))
+
 bird_test |> 
   pivot_longer(-surveyid, names_to="species", values_to="count") |> 
   dplyr::filter(count > 0) |> 
@@ -108,6 +153,34 @@ bird_test |>
             max = max(count),
             mn = mean(count),
             sd = sd(count))
+
+## 2.6 BADR recordings processed ----
+source("00.WTlogin.R")
+wt_auth()
+
+projects <- wt_get_download_summary("PC")
+
+covs_all <- covs_test |> 
+  dplyr::select(project_id, Easting, Northing, year, date_time) |> 
+  mutate(dataset = "test") |> 
+  rbind(covs_train |> 
+          dplyr::select(project_id, Easting, Northing, year, date_time) |> 
+          mutate(dataset = "train")) |> 
+  left_join(projects) |> 
+  unique()
+
+covs_badr <- covs_all |> 
+  dplyr::filter(project_id %in% c(686, 1174, 2088))
+
+covs_badr |> 
+  group_by(Easting, Northing) |> 
+  summarize(n=n()) |> 
+  ungroup() |> 
+  summarize(min = min(n),
+            max = max(n),
+            mean = mean(n))
+  
+  
 
 # 3. Habitat models -----
 
