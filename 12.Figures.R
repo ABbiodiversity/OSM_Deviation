@@ -59,6 +59,10 @@ abosr <- rbind(ab, osr)
 load(file.path(root, "Deviation From Expected", "Data", "Train.Rdata"))
 load(file.path(root, "Deviation From Expected", "Data", "Test.Rdata"))
 
+covs_train_mam <- read_sf(file.path(root, "Deviation From Expected", "Data", "Mammallocs", "Site locations used for mammal deviation modeling.shp"))
+
+covs_test_mam <- read_sf(file.path(root, "Deviation From Expected", "Data", "Mammallocs", "Site locations used for mammal forecasting.shp"))
+
 ## 2.6 Format data for plotting ----
 covs_plot <- covs_train |> 
   dplyr::select(Easting, Northing, year) |> 
@@ -67,7 +71,27 @@ covs_plot <- covs_train |>
           dplyr::select(Easting, Northing, year) |> 
           mutate(Plot = ifelse(year < 2020, "Test", "Forecast"))) |> 
   mutate(Plot = factor(Plot, levels = c("Train", "Test", "Forecast")),
-         Year = as.integer(year))
+         Year = as.integer(year),
+         Taxa = "Birds") |> 
+  dplyr::select(-year) |> 
+  rbind(covs_test_mam |> 
+          st_transform(crs=3400) |> 
+          st_coordinates() |> 
+          data.frame() |> 
+          mutate(Plot = "Forecast",
+                 Taxa = "Mammals",
+                 Year = covs_test_mam$year) |> 
+          rename(Easting = X, Northing = Y),
+        covs_train_mam |> 
+          st_transform(crs=3400) |> 
+          st_coordinates() |> 
+          data.frame() |> 
+          mutate(Plot = "Train",
+                 Taxa = "Mammals",
+                 Year = covs_train_mam$year) |> 
+          rename(Easting = X, Northing = Y)) |> 
+  mutate(Year = as.numeric(Year)) |> 
+  dplyr::filter(Northing < st_bbox(osr)$ymax)
 
 ## 2.6 Plot ----
 plot.sa <- ggplot() +
@@ -75,7 +99,7 @@ plot.sa <- ggplot() +
   geom_point(data=covs_plot, (aes(x=Easting, y=Northing, colour=Year)), alpha = 0.7) +
   scale_fill_manual(values=c("grey90", "grey60"), labels=c("Alberta", "Oil sands\nregion (OSR)"), name="") +
   scale_colour_viridis_c(name = "Year") +
-  facet_wrap(~Plot) +
+  facet_grid(Taxa~Plot, drop=TRUE) +
   scale_shape(name = "Taxa", labels=c("Birds", "Mammals", "Both")) +
   theme_bw() +
   theme(legend.position = "bottom") +
@@ -83,7 +107,7 @@ plot.sa <- ggplot() +
   ylab("")
 plot.sa
 
-ggsave(plot.sa, file=file.path(root,"Deviation From Expected", "Figures", "StudyArea.jpeg"), width =8, height = 6)
+ggsave(plot.sa, file=file.path(root,"Deviation From Expected", "Figures", "StudyArea.jpeg"), width =8, height = 10)
   
 # 3. Suitability coefficients ----
 
