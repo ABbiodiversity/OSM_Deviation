@@ -252,3 +252,61 @@ sd(out$estimate)
 out |> 
   dplyr::select(species, r2) |> 
   unique()
+
+#6. Overall dataset (for TAC slide ----)
+
+# 6.1 Put together ----
+source("00.WTlogin.R")
+wt_auth()
+
+projects <- wt_get_download_summary("PC")
+
+covs_all <- covs_test |> 
+  dplyr::select(project_id, gisid, Easting, Northing, year, date_time) |> 
+  mutate(dataset = "test") |> 
+  rbind(covs_train |> 
+          dplyr::select(project_id, gisid, Easting, Northing, year, date_time) |> 
+          mutate(dataset = "train")) |> 
+  left_join(projects) |> 
+  unique()
+
+# 6.2 Ecosystem health ----
+covs_eh <- covs_all |> 
+  dplyr::filter(str_sub(project, 1, 9)=="Ecosystem")
+
+length(unique(covs_eh$gisid))
+
+summary(covs_eh$year)
+
+# 6.3 BADR -----
+covs_badr <- covs_all |> 
+  dplyr::filter(project_id %in% c(686, 1174, 2088))
+
+length(unique(covs_badr$gisid))
+
+summary(covs_badr$year)
+
+# 6.4 BU -----
+covs_bu <- covs_all |> 
+  dplyr::filter(organization=="BU")
+
+length(unique(covs_bu$gisid))
+
+summary(covs_bu$year)
+
+#6.5 BAM ----
+covs_bbs <- covs_all |> 
+  dplyr::filter(organization=="BAM")
+
+locs_bbs <- covs_bbs |> 
+  mutate(loc = str_sub(gisid, 1, 16)) |> 
+  dplyr::select(organization, project, loc) |> 
+  unique() 
+
+#6.6 CWS ----
+covs_cws <- covs_all |> 
+  dplyr::filter(organization=="CWS-PRA")
+
+length(unique(covs_cws$gisid))
+
+summary(covs_cws$year)
