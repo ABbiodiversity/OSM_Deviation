@@ -93,7 +93,7 @@ covs_plot <- covs_train |>
   mutate(Year = as.numeric(Year)) |> 
   dplyr::filter(Northing < st_bbox(osr)$ymax)
 
-## 2.6 Plot ----
+## 2.6 Plot by train/test ----
 plot.sa <- ggplot() +
   geom_sf(data=abosr, aes(fill=strata_name), colour="grey10", inherit.aes=FALSE) +
   geom_point(data=covs_plot, (aes(x=Easting, y=Northing, colour=Year)), alpha = 0.7) +
@@ -108,6 +108,35 @@ plot.sa <- ggplot() +
 plot.sa
 
 ggsave(plot.sa, file=file.path(root,"Deviation From Expected", "Figures", "StudyArea.jpeg"), width =8, height = 10)
+
+## 2.7 Plot birds by source ----
+covs_all <- covs_test |> 
+  dplyr::select(project_id, gisid, Easting, Northing, year, date_time) |> 
+  mutate(dataset = "test") |> 
+  rbind(covs_train |> 
+          dplyr::select(project_id, gisid, Easting, Northing, year, date_time) |> 
+          mutate(dataset = "train")) |> 
+  left_join(projects) |> 
+  unique() |> 
+  mutate(Source = case_when(project_id %in% c(686, 1174, 2088) ~ "BADR",
+                            str_sub(project, 1, 9)=="Ecosystem" ~ "Ecosystem Health",
+                            organization=="BAM" ~ "BBS",
+                            organization=="CWS-PRA" ~ "ECCC",
+                            organization=="BU" ~ "Bioacoustic Unit")) |> 
+  dplyr::filter(!is.na(Source))
+
+plot.org <- ggplot() +
+  geom_sf(data=abosr, aes(fill=strata_name), colour="grey10", inherit.aes=FALSE) +
+  geom_point(data=covs_all, (aes(x=Easting, y=Northing, colour=Source)), alpha = 0.7) +
+  scale_fill_manual(values=c("grey90", "grey60"), labels=c("Alberta", "Oil sands\nregion (OSR)"), name="") +
+  scale_colour_viridis_d() +
+  theme_bw() +
+  theme(legend.position = "right") +
+  xlab("") +
+  ylab("")
+plot.org
+
+ggsave(plot.org, file=file.path(root,"Deviation From Expected", "Figures", "DataSource.jpeg"), width =5, height = 6)
   
 # 3. Suitability coefficients ----
 
