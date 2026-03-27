@@ -14,6 +14,7 @@
 library(tidyverse) # data manipulation and visualization
 library(sf)
 library(paletteer)
+library(wildrtrax)
 
 ## 1.2 Set GD roots----
 root <- "G:/Shared drives/ABMI_ECKnight/Projects/OSM"
@@ -31,6 +32,12 @@ spp <- data.frame(species = c("LEFL", "BTNW", "CMWA", "HETH", "OVEN", "PIWO", "N
 guilds1 <- paletteer_d("ggthemes::excel_Feathered")
 guilds <- guilds1[c(1,2,5,4,3,6)]
 #Yeah that's right it's a bird palette, obviously
+
+## 2.2 Get WT project IDs ----
+source("login.R")
+wt_auth()
+projects <- wt_get_projects("ARU") |>
+  rename(organization = organization_name)
 
 # 2. Study area figure ----
 
