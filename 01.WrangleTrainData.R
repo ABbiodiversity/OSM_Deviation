@@ -15,11 +15,11 @@ library(tidyverse) # data manipulation and visualization
 library(sf) # gis
 
 ## 1.2 Set GD roots----
-rootin <- "G:/Shared drives/ABMI_ECKnight/Projects/BirdModels"
-rootout <- "G:/Shared drives/ABMI_ECKnight/Projects/OSM"
+rootin <- "G:/Shared drives/ABMI_RHedley/Projects/BirdModels"
+rootout <- "G:/Shared drives/ABMI_RHedley/Projects/OSM"
 
 ## 1.3 Import bird model data ----
-load(file.path(rootin,"Data", "Stratified.Rdata"))
+load(file.path(rootin,"Data", "Archive", "2025", "Stratified.Rdata"))
 
 ## 1.4 Import LU shapefile ----
 lu <- read_sf(file.path(rootout, "GIS", "OSR_LU_fxd", "OSR_LUs_fxd.shp"))
