@@ -274,7 +274,8 @@ badr_column_names <- c("ClusterB", "COUNT_HUC1", "SUM_hapark",
                        "Roads", "Plant/Mine", "Dense Linear Features", "Low Activity Well Pads", 
                        "Plant/Mine Buffer", "Low Disturbance/Reference")
 
-main <- left_join(main, covs_badr[,c()])
+#Add BADR covariates.
+main <- left_join(main, unique(covs_badr[,c('gisid', badr_column_names)]))
 
 
 #Historical data ----------------------
@@ -326,6 +327,9 @@ apply(historic, 2, function(x) sum(is.na(x)))
 #Joint to add project.
 historic <- left_join(historic, wt_proj_names[,c('project_id', 'project')])
 
+#Add BADR covariates.
+historic <- left_join(historic, unique(covs_badr[,c('gisid', badr_column_names)]))
+
 #Riverforks data ----------------------
 
 #Same procedure for the riverforks data.
@@ -371,18 +375,37 @@ apply(rf_meta, 2, function(x) sum(is.na(x)))
 #Joint to add project.
 rf_meta$project <- 'Riverforks Historical Recordings'
 
+#Add BADR covariates.
+rf_meta <- left_join(rf_meta, unique(covs_badr[,c('gisid', badr_column_names)]))
+
 #Write separate metadata files -----------------------------------------
 
 #Re-order columns. Also removing gisid.
-col_order <- c("project", "project_id", "location", "location_id", "year", "vegc", 
-               "soilc", "vegw", "soilw", "wtAge", "wtAge2", "wtAge05", "isCon", 
-               "isUpCon", "isBogFen", "isMix", "isPine", "isWSpruce", "fcc2", 
-               "mWell", "mSoft", "mEnSft", "mTrSft", "mSeism", "paspen", "MAP", 
-               "TD", "CMD", "FFP", "EMT", "road", "pWater_KM", "pWater2_KM")
+# col_order_main <- c("project", "project_id", "location", "location_id", "year", "vegc", 
+#                     "soilc", "vegw", "soilw", "wtAge", "wtAge2", "wtAge05", "isCon", 
+#                     "isUpCon", "isBogFen", "isMix", "isPine", "isWSpruce", "fcc2", 
+#                     "mWell", "mSoft", "mEnSft", "mTrSft", "mSeism", "paspen", "MAP", 
+#                     "TD", "CMD", "FFP", "EMT", "road", "pWater_KM", "pWater2_KM", 
+#                     "ClusterB", "COUNT_HUC1", "SUM_hapark", "SUM_hamine", 
+#                     "SUM_hapipe", "SUM_haroad", "SUM_haseis", "SUM_hawell", "SUM_hawe_1", 
+#                     "SUM_hawe_2", "SUM_OSMdat", "propmine", "proppipe", "proproad", 
+#                     "propseismi", "propallwel", "cei", "propdecid", "propmixed", 
+#                     "propcrop", "propupland", "propwater", "fireareaha", "insituarea", 
+#                     "Shape_Leng", "propfire", "propinsitu", "LanduseReg", "Selected", 
+#                     "Avg_TDN", "Max_TDN", "SD_TDN", "Avg_TDS", "Max_TDS", "SD_TDS", 
+#                     "deciles", "High Activity Insitu Well Pads", "Roads", "Plant/Mine", 
+#                     "Dense Linear Features", "Low Activity Well Pads", "Plant/Mine Buffer", 
+#                     "Low Disturbance/Reference")
 
-main <- main[,col_order]
-historic <- historic[,col_order]
-rf_meta <- rf_meta[,col_order]
+col_order_keep <- c("project", "project_id", "location", "location_id", "year", "High Activity Insitu Well Pads", "Roads", "Plant/Mine",
+                    "Dense Linear Features", "Low Activity Well Pads", "Plant/Mine Buffer",
+                    "Low Disturbance/Reference")
+
+
+
+main <- main[,col_order_keep]
+historic <- historic[,col_order_keep]
+rf_meta <- rf_meta[,col_order_keep]
 
 write.csv(main, file.path(root, 'Data', 'Data_shared_2026-04-28', 'ABMI OSM 2021-2024 ARU Deployment Metadata.csv'),
           row.names = F)

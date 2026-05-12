@@ -93,7 +93,7 @@ loc_sf <- loc |>
 
 ## 4.1 Get the locations within the aoi ----
 loc_aoi <- loc_sf |> 
-  st_intersection(aoi)
+  st_filter(aoi)
 
 ## 4.2 Filter the covs object to aoi ----
 covs_aoi <- inner_join(covs_all, loc_aoi |> st_drop_geometry())
@@ -169,6 +169,16 @@ covs_lu <- st_intersection(covs_sf, lu) |>
   ungroup()
 
 ## 7.3 Get the BADR treatment proportions ----
+
+for(i in 1:nrow(covs_buff)) {
+  current <- covs_buff[i,]
+
+  if(i == 1) {lyrs <- st_layers(file.path(rootout, "GIS", "year_2021_treat.gdb"))}
+  current <- st_transform(current, lyrs$crs[[1]])
+  wkt <- st_as_text(st_geometry(current))
+  badr <- st_read(file.path(rootout, "GIS", "year_2021_treat.shp"),
+                  wkt_filter = wkt)
+}
 covs_tmnt <- covs_buff |> 
   st_intersection(badr) |> 
   mutate(tmntarea = as.numeric(st_area(geometry))/area) |> 
