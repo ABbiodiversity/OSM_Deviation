@@ -29,7 +29,7 @@ cl <- makePSOCKcluster(nodes, type="PSOCK")
 #5. Set root path----
 print("* Setting root file path *")
 if(cc){root <- "/scratch/ecknight/ABModels"}
-if(!cc){root <- "G:/Shared drives/ABMI_ECKnight/Projects/OSM/Deviation From Expected"}
+if(!cc){root <- "G:/Shared drives/ABMI_RHedley/Projects/OSM/Deviation From Expected"}
 
 tmpcl <- clusterExport(cl, c("root"))
 
