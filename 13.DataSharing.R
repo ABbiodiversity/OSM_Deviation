@@ -224,7 +224,7 @@ main$gisid <- ifelse(main$gisid %in% covs_test$gisid,
 #Check how many match.
 sum(main$gisid %in% covs_test$gisid) #677 out of 888.
 
-#Of the remaining ~200 points, most are 2024.
+#Of the remaining 211 points, most are 2024.
 #After discussion with Elly, we agreed that a good approach is to share
 #the covariates where they are available. For the other points, they were
 #not included in the analysis, so these covariates were not extracted.
@@ -277,6 +277,55 @@ badr_column_names <- c("ClusterB", "COUNT_HUC1", "SUM_hapark",
 #Add BADR covariates.
 main <- left_join(main, unique(covs_badr[,c('gisid', badr_column_names)]))
 
+#Update as of May 19, 2026. Most of the columns are not being shared (see below where
+#columns are removed). However, a request has been made to extract covariates for 
+#the 2024 data. The covariates needed are:
+#"High Activity Insitu Well Pads", "Roads", "Plant/Mine", "Dense Linear Features", "Low Activity Well Pads", "Plant/Mine Buffer", "Low Disturbance/Reference"
+#I copied script from 04.WrangleAllTestData to extract this.
+#First, re-read main, subset to 2024 points and get lat-longs.
+
+#locations_needed.
+locations_needed <- main$gisid[is.na(main$`Plant/Mine`)]
+locs <- read.csv(file.path(root, 'Data', 'Data_shared_2026-04-28', 'ABMI OSM 2021-2024 ARU Main Reports.csv')) |>
+  mutate(year = year(as.POSIXct(recording_date_time))) |>
+  mutate(gisid = paste(location, project_id, year, sep = '_')) |>
+  filter(gisid %in% locations_needed) |>
+  select(gisid, latitude, longitude) |>
+  distinct()
+
+#Convert to sf object and buffer.
+locs_buff <- locs |>
+  st_as_sf(coords = c('longitude', 'latitude'), crs = 4326, remove = F) |>
+  st_transform(crs=3400) |>
+  st_buffer(150)
+
+#now use the locs info to extract treatments.
+badr <- read_sf(file.path(dirname(root), "GIS", "year_2021_treat.shp")) |>
+  st_make_valid()
+
+col_to_calculate <- c("High Activity Insitu Well Pads", "Roads", "Plant/Mine", 
+                      "Dense Linear Features", "Low Activity Well Pads", "Plant/Mine Buffer", 
+                      "Low Disturbance/Reference")
+locs_buff[col_to_calculate] <- NA
+for(i in 1:nrow(locs_buff)) {
+  current <- locs_buff[i,]
+  current <- st_intersection(current, badr)
+  for(j in 1:length(col_to_calculate)) {
+    locs_buff[i,col_to_calculate[j]] <- round(sum(st_area(current[current$Treatment == col_to_calculate[j],])) / (pi*150^2),3)
+  }
+  print(i)
+}
+
+#drop geometry.
+locs_buff <- st_drop_geometry(locs_buff)
+
+#Where appropriate, replace columns in main.
+for(i in 1:nrow(locs_buff)) {
+  current <- locs_buff[i,]
+  for(j in 1:length(col_to_calculate)) {
+    main[main$gisid == current$gisid, col_to_calculate[j]] <- current[1,col_to_calculate[j]]
+  }
+}
 
 #Historical data ----------------------
 
@@ -406,6 +455,8 @@ col_order_keep <- c("project", "project_id", "location", "location_id", "year", 
 main <- main[,col_order_keep]
 historic <- historic[,col_order_keep]
 rf_meta <- rf_meta[,col_order_keep]
+
+for(i in 6:12) {main[,i] <- round(main[,i],3)}
 
 write.csv(main, file.path(root, 'Data', 'Data_shared_2026-04-28', 'ABMI OSM 2021-2024 ARU Deployment Metadata.csv'),
           row.names = F)
